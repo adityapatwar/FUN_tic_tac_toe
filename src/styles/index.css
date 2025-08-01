@@ -6,6 +6,21 @@
   --bg: #171717;
   --surface: #262626;
   --border: #2F2F2F;
+
+  /* Animation tokens */
+  --dur-fast: 120ms;
+  --dur-med: 160ms;
+  --dur-enter: 220ms;
+  --dur-line: 300ms;
+
+  --ease-out-spring: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+
+  --scale-hover: 1.02;
+  --scale-overshoot: 1.03;
+
+  --glow-turn: rgba(158,127,255,0.35);
+  --win-color: rgba(16,185,129,0.6);
 }
 
 html, body, #root {
@@ -17,10 +32,117 @@ html, body, #root {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-med: 1ms;
+    --dur-enter: 1ms;
+    --dur-line: 1ms;
+  }
   * {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Keyframes */
+@keyframes in-symbol {
+  0% { transform: scale(0.85); opacity: 0 }
+  60% { transform: scale(var(--scale-overshoot)); opacity: 1 }
+  100% { transform: scale(1); opacity: 1 }
+}
+
+@keyframes pulse-once {
+  0% { transform: scale(1); opacity: 1 }
+  50% { transform: scale(1.03); opacity: 1 }
+  100% { transform: scale(1); opacity: 1 }
+}
+
+@keyframes shake-x {
+  0% { transform: translateX(0) }
+  25% { transform: translateX(-3px) }
+  75% { transform: translateX(3px) }
+  100% { transform: translateX(0) }
+}
+
+@keyframes board-fade-in {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+@keyframes board-fade-out {
+  from { opacity: 1 }
+  to { opacity: 0 }
+}
+
+@keyframes line-draw {
+  from { transform: scaleX(0); opacity: 0.8 }
+  to { transform: scaleX(1); opacity: 1 }
+}
+
+@layer components {
+  .cell-hover {
+    transition: transform var(--dur-fast) var(--ease-out-spring),
+                filter var(--dur-fast) var(--ease-out-spring),
+                box-shadow var(--dur-fast) var(--ease-out-spring);
+  }
+  .cell-hover:hover {
+    transform: scale(var(--scale-hover));
+    filter: brightness(1.05);
+  }
+
+  .cell-focus {
+    position: relative;
+    outline: none;
+  }
+  .cell-focus:focus-visible::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 16px;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.14), 0 0 24px var(--glow-turn);
+    transition: box-shadow var(--dur-med) var(--ease-out-spring);
+    pointer-events: none;
+  }
+
+  .symbol-enter {
+    animation: in-symbol var(--dur-enter) var(--ease-out-spring);
+    will-change: transform, opacity;
+  }
+
+  .shake {
+    animation: shake-x 90ms var(--ease-out-spring) 1;
+    will-change: transform;
+  }
+
+  .board-fade-in {
+    animation: board-fade-in 220ms var(--ease-out-spring);
+  }
+  .board-fade-out {
+    animation: board-fade-out 200ms var(--ease-in-out);
+  }
+
+  .notif-enter {
+    animation: board-fade-in 180ms var(--ease-out-spring);
+  }
+
+  .turn-badge {
+    transition: transform var(--dur-med) var(--ease-out-spring),
+                opacity var(--dur-med) var(--ease-out-spring),
+                background-color var(--dur-med) var(--ease-out-spring),
+                color var(--dur-med) var(--ease-out-spring);
+  }
+  .turn-badge[data-active="true"] {
+    transform: scale(1.02);
+    box-shadow: 0 0 24px 0 var(--glow-turn);
+  }
+
+  .win-line {
+    height: 6px;
+    background: linear-gradient(90deg, rgba(16,185,129,0.0), var(--win-color), rgba(16,185,129,0.0));
+    border-radius: 999px;
+    transform-origin: left center;
+    animation: line-draw var(--dur-line) var(--ease-in-out) forwards, pulse-once 320ms var(--ease-out-spring) 1 320ms;
+    will-change: transform, opacity;
   }
 }

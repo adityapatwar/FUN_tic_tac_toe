@@ -14,6 +14,7 @@ export function Header({
   series: Series
   setSeries: (s: Series) => void
 }) {
+  const isCPU = mode === 'CPU'
   return (
     <header className="w-full">
       <div className="flex items-center justify-between">
@@ -29,7 +30,7 @@ export function Header({
                 <Users className="inline w-4 h-4 mr-1" /> PvP
               </button>
               <button
-                className={`px-3 py-2 text-sm transition-colors ${mode==='CPU' ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-800/60'}`}
+                className={`px-3 py-2 text-sm transition-colors ${isCPU ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-800/60'}`}
                 onClick={() => setMode('CPU')}
               >
                 <Bot className="inline w-4 h-4 mr-1" /> CPU
@@ -61,6 +62,14 @@ export function Header({
           <div>
             <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight">Strategic Tic Tac Toe</h1>
             <p className="text-zinc-300 mt-1">Fast. Beautiful. Competitive.</p>
+            <div className="mt-3 flex items-center gap-3">
+              <span className="turn-badge px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 text-sm text-zinc-200" data-active={mode==='PVP'}>
+                PvP
+              </span>
+              <span className="turn-badge px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 text-sm text-zinc-200" data-active={isCPU}>
+                vs CPU
+              </span>
+            </div>
           </div>
           <div className="hidden md:block">
             <div className="relative">

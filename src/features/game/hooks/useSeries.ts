@@ -10,8 +10,15 @@ export function useSeries(series: Series) {
   const [seriesWins, setSeriesWins] = useState({ X: 0, O: 0 })
   const [startingPlayer, setStartingPlayer] = useState<Player>('X')
 
+  // Ensure we always provide a valid board to consumers
+  const currentBoard = useMemo<Board>(() => {
+    const board = history[currentMove]
+    if (Array.isArray(board) && board.length === 9) return board
+    // fallback to initialBoard if something is off
+    return initialBoard
+  }, [history, currentMove])
+
   const xIsNext = useMemo(() => currentMove % 2 === 0, [currentMove])
-  const currentBoard = history[currentMove]
   const { winner, line } = useMemo(() => calculateWinner(currentBoard), [currentBoard])
 
   const playMove = useCallback((index: number) => {

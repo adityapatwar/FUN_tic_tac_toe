@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import type { Mode, Series } from '../logic/types'
 import { getBestMove } from '../logic/ai'
 import { Header } from '../components/Header'
@@ -7,34 +7,63 @@ import { ControlButton } from '../components/Buttons'
 import { ScoreBadge } from '../components/ScoreBadge'
 import { Brain, History, RefreshCcw, Trophy, Undo2, Redo2 } from 'lucide-react'
 import { useSeries } from '../hooks/useSeries'
+import { WinLine } from '../components/WinLine'
 
 export function GamePage() {
   const [mode, setMode] = useState<Mode>('PVP')
   const [series, setSeries] = useState<Series>('single')
+  const [boardAnim, setBoardAnim] = useState<'idle'|'fade-out'|'fade-in'>('idle')
 
   const { state, actions, flags, statusText } = useSeries(series)
   const { currentBoard, winner, line, scores, seriesWins, xIsNext } = state
   const { playMove, resetBoard, fullReset, undo, redo, setCurrentMove } = actions
   const { canUndo, canRedo, gameDisabled } = flags
 
+  const safeBoard = useMemo(() => (Array.isArray(currentBoard) ? currentBoard : []), [currentBoard])
+  const safeHistory = useMemo(() => (Array.isArray(state.history) ? state.history : []), [state.history])
+
+  const moves = useMemo(
+    () =>
+      safeHistory.map((_, move) => ({
+        move,
+        desc: move === 0 ? 'Mulai' : `Langkah #${move}`,
+      })),
+    [safeHistory]
+  )
+
   // CPU turn
   useEffect(() => {
-    if (mode !== 'CPU') return
+    const isCPU = mode === 'CPU'
+    if (!isCPU) return
     if (winner) return
-    const cpu = 'O'
-    const currentPlayer = xIsNext ? 'X' : 'O'
+
+    const cpu: 'O' = 'O'
+    const currentPlayer: 'X' | 'O' = xIsNext ? 'X' : 'O'
     if (currentPlayer !== cpu) return
-    const move = getBestMove(currentBoard, cpu, 'X')
+
+    if (!Array.isArray(safeBoard) || safeBoard.length !== 9) return
+    const move = getBestMove(safeBoard as typeof currentBoard, cpu, 'X')
     if (move >= 0) {
-      const id = setTimeout(() => playMove(move), 350)
+      const id = setTimeout(() => playMove(move), 280)
       return () => clearTimeout(id)
     }
-  }, [mode, currentBoard, xIsNext, winner, playMove])
+  }, [mode, safeBoard, xIsNext, winner, playMove])
 
-  const moves = state.history.map((_, move) => ({
-    move,
-    desc: move === 0 ? 'Mulai' : `Langkah #${move}`,
-  }))
+  // Animated reset handler
+  const handleRematch = useRef<() => void>()
+  handleRematch.current = () => {
+    setBoardAnim('fade-out')
+    window.setTimeout(() => {
+      resetBoard(true)
+      setBoardAnim('fade-in')
+      window.setTimeout(() => setBoardAnim('idle'), 240)
+    }, 200)
+  }
+
+  const gridAnimClass =
+    boardAnim === 'fade-out' ? 'board-fade-out'
+    : boardAnim === 'fade-in' ? 'board-fade-in'
+    : ''
 
   return (
     <>
@@ -64,7 +93,12 @@ export function GamePage() {
                 <div className="flex items-center gap-2">
                   <ControlButton icon={Undo2} label="Undo" onClick={undo} disabled={!canUndo} tone="ghost" />
                   <ControlButton icon={Redo2} label="Redo" onClick={redo} disabled={!canRedo} tone="ghost" />
-                  <ControlButton icon={RefreshCcw} label="Rematch" onClick={() => resetBoard(true)} tone="primary" />
+                  <ControlButton
+                    icon={RefreshCcw}
+                    label="Rematch"
+                    onClick={() => handleRematch.current?.()}
+                    tone="primary"
+                  />
                 </div>
               </div>
 
@@ -78,21 +112,30 @@ export function GamePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 sm:gap-4" role="grid" aria-label="Tic Tac Toe Board">
-                {currentBoard.map((cell, idx) => (
-                  <SquareCell
-                    key={idx}
-                    value={cell}
-                    index={idx}
-                    onClick={() => playMove(idx)}
-                    highlight={line?.includes(idx)}
-                    disabled={gameDisabled || Boolean(cell) || (mode === 'CPU' && !xIsNext)}
-                  />
-                ))}
+              <div className={`relative ${gridAnimClass}`}>
+                <div className="grid grid-cols-3 gap-3 sm:gap-4" role="grid" aria-label="Tic Tac Toe Board">
+                  {Array.isArray(safeBoard) && safeBoard.length === 9 ? (
+                    safeBoard.map((cell, idx) => (
+                      <SquareCell
+                        key={idx}
+                        value={cell}
+                        index={idx}
+                        onClick={() => playMove(idx)}
+                        highlight={line?.includes(idx)}
+                        disabled={gameDisabled || Boolean(cell) || (mode === 'CPU' && !xIsNext)}
+                      />
+                    ))
+                  ) : (
+                    <div className="p-4 rounded-2xl border border-zinc-700 bg-zinc-800/60 text-zinc-300">
+                      Memuat papan...
+                    </div>
+                  )}
+                </div>
+                {line && <WinLine line={line} />}
               </div>
 
               {winner && (
-                <div className="mt-5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 flex items-center justify-between">
+                <div className="mt-5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 flex items-center justify-between notif-enter">
                   <div className="flex items-center gap-2">
                     <Trophy className="w-5 h-5" />
                     <span className="font-medium">
@@ -102,7 +145,7 @@ export function GamePage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ControlButton icon={RefreshCcw} label="Main Lagi" onClick={() => resetBoard(true)} tone="primary" />
+                    <ControlButton icon={RefreshCcw} label="Main Lagi" onClick={() => handleRematch.current?.()} tone="primary" />
                   </div>
                 </div>
               )}
@@ -134,6 +177,9 @@ export function GamePage() {
                   </button>
                 </li>
               ))}
+              {moves.length === 0 && (
+                <li className="text-sm text-zinc-400 px-3 py-2">Belum ada langkah.</li>
+              )}
             </ul>
 
             <div className="mt-6 space-y-3">
